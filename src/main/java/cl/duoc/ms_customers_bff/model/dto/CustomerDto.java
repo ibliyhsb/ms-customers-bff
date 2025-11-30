@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.util.Set;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -33,5 +35,8 @@ public class CustomerDto {
 
     @JsonProperty(value = "email")
      private String email;
+
+    @JsonProperty(value = "roles")
+     private Set<String> roles;
 
 }

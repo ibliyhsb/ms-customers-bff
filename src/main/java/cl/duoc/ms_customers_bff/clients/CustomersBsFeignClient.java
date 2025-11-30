@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import cl.duoc.ms_customers_bff.model.dto.CustomerDto;
 
@@ -26,6 +27,9 @@ public interface CustomersBsFeignClient {
     @GetMapping("/api/customers/GetCustomerById/{idCustomer}")
     public ResponseEntity<?> getCustomerById(@PathVariable("idCustomer") Long idCustomer);
 
+    @GetMapping("/api/customers/GetCustomerByUsername/{username}")
+    public ResponseEntity<CustomerDto> getCustomerByUsername(@PathVariable("username") String username);
+
     @PostMapping("/api/customers")
     public ResponseEntity<String> insertCustomer(@RequestBody CustomerDto customerDto);
 
@@ -35,4 +39,14 @@ public interface CustomersBsFeignClient {
     
     @PutMapping("/api/customers/UpdateCustomer")
     public ResponseEntity<String> updateCustomer(@RequestBody CustomerDto customerDto);
+
+    // Methods with Authorization header for inter-service communication
+    @GetMapping("/api/customers")
+    public ResponseEntity<List<CustomerDto>> selectAllCustomer(@RequestHeader("Authorization") String token);
+
+    @GetMapping("/api/customers/GetCustomerById/{idCustomer}")
+    public ResponseEntity<?> getCustomerById(@PathVariable("idCustomer") Long idCustomer, @RequestHeader("Authorization") String token);
+
+    @GetMapping("/api/customers/GetCustomerByUsername/{username}")
+    public ResponseEntity<CustomerDto> getCustomerByUsername(@PathVariable("username") String username, @RequestHeader("Authorization") String token);
 }
