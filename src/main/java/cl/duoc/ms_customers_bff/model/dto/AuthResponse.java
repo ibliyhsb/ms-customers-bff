@@ -30,8 +30,8 @@ public class AuthResponse {
     @JsonProperty("expiresIn")
     private Long expiresIn;
 
-    @JsonProperty("username")
-    private String username;
+    @JsonProperty("email")
+    private String email;
 
     @JsonProperty("roles")
     private Set<String> roles;

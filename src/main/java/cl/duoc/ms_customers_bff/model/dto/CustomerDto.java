@@ -21,16 +21,13 @@ public class CustomerDto {
     @JsonProperty(value = "id_customer")
      private Long idCustomer;
 
-    @JsonProperty(value = "username")
-     private String username;
-
     @JsonProperty(value = "password")
      private String password;
 
-    @JsonProperty(value = "name")
+    @JsonProperty(value = "nombre")
      private String name;
 
-    @JsonProperty(value = "last_name")
+    @JsonProperty(value = "apellidos")
      private String lastName;
 
     @JsonProperty(value = "email")

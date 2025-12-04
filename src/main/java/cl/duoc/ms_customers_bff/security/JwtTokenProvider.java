@@ -49,12 +49,12 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(String username, Set<String> roles, Long userId) {
+    public String generateAccessToken(String email, Set<String> roles, Long userId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
         return Jwts.builder()
-                .subject(username)
+                .subject(email)
                 .claim("roles", roles)
                 .claim("userId", userId)
                 .issuedAt(now)
@@ -63,12 +63,12 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(String email) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + refreshExpiration);
 
         return Jwts.builder()
-                .subject(username)
+                .subject(email)
                 .claim("type", "refresh")
                 .issuedAt(now)
                 .expiration(expiryDate)
@@ -76,13 +76,18 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String getUsernameFromToken(String token) {
+    public String getEmailFromToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
         return claims.getSubject();
+    }
+
+    public String getUsernameFromToken(String token) {
+        // Kept for backward compatibility - returns email
+        return getEmailFromToken(token);
     }
 
     @SuppressWarnings("unchecked")

@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import cl.duoc.ms_customers_bff.model.dto.CustomerDto;
 
-@FeignClient(name = "ms-customers-bs", url = "http://localhost:8081")
+@FeignClient(name = "ms-customers-bs", url = "http://localhost:8080")
 public interface CustomersBsFeignClient {
 
     
-    @GetMapping("/api/customers/authenticate/{username}/{password}")
-    public boolean authenticateCustomer (@PathVariable("username") String username, @PathVariable("password") String password);
+    @PostMapping("/api/customers/authenticate/{email}/{password}")
+    public boolean authenticateCustomer (@PathVariable("email") String email, @PathVariable("password") String password);
 
     @GetMapping("/api/customers")
     public ResponseEntity<List<CustomerDto>> selectAllCustomer();
@@ -26,8 +26,8 @@ public interface CustomersBsFeignClient {
     @GetMapping("/api/customers/GetCustomerById/{idCustomer}")
     public ResponseEntity<?> getCustomerById(@PathVariable("idCustomer") Long idCustomer);
 
-    @GetMapping("/api/customers/GetCustomerByUsername/{username}")
-    public ResponseEntity<CustomerDto> getCustomerByUsername(@PathVariable("username") String username);
+    @GetMapping("/api/customers/GetCustomerByEmail/{email}")
+    public ResponseEntity<CustomerDto> getCustomerByEmail(@PathVariable("email") String email);
 
     @PostMapping("/api/customers")
     public ResponseEntity<String> insertCustomer(@RequestBody CustomerDto customerDto);

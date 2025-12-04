@@ -33,12 +33,12 @@ public ResponseEntity<List<CustomerDto>> selectAllCustomer(){
 }
 
 
-public ResponseEntity<String> authenticateCustomer(String username, String password){  
+public ResponseEntity<String> authenticateCustomer(String email, String password){  
 
-    boolean authenticate = customersBsFeignClient.authenticateCustomer(username, password);
+    boolean authenticate = customersBsFeignClient.authenticateCustomer(email, password);
 
     if (authenticate == false){
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("The username and password do not match.");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("The email and password do not match.");
     }
 
     else {
@@ -61,9 +61,9 @@ public ResponseEntity<String> updateCustomer(CustomerDto customerDto){
     return customersBsFeignClient.updateCustomer(customerDto);
 }
 
-public ResponseEntity<?> getCurrentUserProfile(String username) {
+public ResponseEntity<?> getCurrentUserProfile(String email) {
     try {
-        ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByUsername(username);
+        ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(email);
         if (response.getBody() != null) {
             CustomerDto customer = response.getBody();
             // Don't return password in profile
@@ -76,10 +76,10 @@ public ResponseEntity<?> getCurrentUserProfile(String username) {
     }
 }
 
-public ResponseEntity<String> updateCurrentUserProfile(String username, CustomerDto customerDto) {
+public ResponseEntity<String> updateCurrentUserProfile(String email, CustomerDto customerDto) {
     try {
         // First get the current user to get their ID
-        ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByUsername(username);
+        ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(email);
         if (response.getBody() == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
@@ -90,7 +90,7 @@ public ResponseEntity<String> updateCurrentUserProfile(String username, Customer
         existingCustomer.setName(customerDto.getName());
         existingCustomer.setLastName(customerDto.getLastName());
         existingCustomer.setEmail(customerDto.getEmail());
-        // Don't allow users to change their own username or roles
+        // Don't allow users to change their roles
         
         return customersBsFeignClient.updateCustomer(existingCustomer);
     } catch (FeignException feignException) {

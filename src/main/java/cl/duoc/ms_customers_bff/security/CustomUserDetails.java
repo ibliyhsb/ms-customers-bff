@@ -10,14 +10,14 @@ import java.util.stream.Collectors;
 
 public class CustomUserDetails implements UserDetails {
 
-    private final String username;
+    private final String email;
     private final String password;
     private final Long customerId;
     private final Set<String> roles;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public CustomUserDetails(String username, String password, Long customerId, Set<String> roles) {
-        this.username = username;
+    public CustomUserDetails(String email, String password, Long customerId, Set<String> roles) {
+        this.email = email;
         this.password = password;
         this.customerId = customerId;
         this.roles = roles;
@@ -38,7 +38,11 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return username;
+        return email; // Required by UserDetails interface
+    }
+
+    public String getEmail() {
+        return email;
     }
 
     public Long getCustomerId() {

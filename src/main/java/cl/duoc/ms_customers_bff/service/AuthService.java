@@ -37,21 +37,21 @@ public class AuthService {
     public AuthResponse login(LoginRequest loginRequest) {
         // Authenticate against ms-customers-bs
         boolean isAuthenticated = customersBsFeignClient.authenticateCustomer(
-                loginRequest.getUsername(), 
+                loginRequest.getEmail(), 
                 loginRequest.getPassword()
         );
 
         if (!isAuthenticated) {
-            throw new IllegalArgumentException("Invalid username or password");
+            throw new IllegalArgumentException("Invalid email or password");
         }
 
         // Get customer details including roles
         CustomerDto customer;
         try {
-            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByUsername(loginRequest.getUsername());
+            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(loginRequest.getEmail());
             customer = response.getBody();
         } catch (FeignException e) {
-            logger.error("Error fetching customer by username: {}", e.getMessage());
+            logger.error("Error fetching customer by email: {}", e.getMessage());
             throw new IllegalArgumentException("Error fetching user details");
         }
 
@@ -68,18 +68,18 @@ public class AuthService {
 
         // Generate tokens
         String accessToken = jwtTokenProvider.generateAccessToken(
-                customer.getUsername(), 
+                customer.getEmail(), 
                 roles, 
                 customer.getIdCustomer()
         );
-        String refreshToken = jwtTokenProvider.generateRefreshToken(customer.getUsername());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(customer.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
                 .expiresIn(jwtTokenProvider.getJwtExpiration())
-                .username(customer.getUsername())
+                .email(customer.getEmail())
                 .roles(roles)
                 .build();
     }
@@ -87,7 +87,6 @@ public class AuthService {
     public AuthResponse register(RegisterRequest registerRequest) {
         // Create customer DTO
         CustomerDto customerDto = new CustomerDto();
-        customerDto.setUsername(registerRequest.getUsername());
         customerDto.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         customerDto.setName(registerRequest.getName());
         customerDto.setLastName(registerRequest.getLastName());
@@ -107,7 +106,7 @@ public class AuthService {
         } catch (FeignException e) {
             logger.error("Error registering customer: {}", e.getMessage());
             if (e.status() == 409) {
-                throw new IllegalArgumentException("Username or email already exists");
+                throw new IllegalArgumentException("Email already exists");
             }
             throw new IllegalArgumentException("Failed to register user: " + e.contentUTF8());
         }
@@ -115,7 +114,7 @@ public class AuthService {
         // Get the created customer to get the ID
         CustomerDto createdCustomer;
         try {
-            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByUsername(registerRequest.getUsername());
+            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(registerRequest.getEmail());
             createdCustomer = response.getBody();
         } catch (FeignException e) {
             logger.error("Error fetching created customer: {}", e.getMessage());
@@ -126,18 +125,18 @@ public class AuthService {
 
         // Generate tokens
         String accessToken = jwtTokenProvider.generateAccessToken(
-                registerRequest.getUsername(), 
+                registerRequest.getEmail(), 
                 roles, 
                 customerId
         );
-        String refreshToken = jwtTokenProvider.generateRefreshToken(registerRequest.getUsername());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(registerRequest.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
                 .expiresIn(jwtTokenProvider.getJwtExpiration())
-                .username(registerRequest.getUsername())
+                .email(registerRequest.getEmail())
                 .roles(roles)
                 .build();
     }
@@ -150,13 +149,13 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid or expired refresh token");
         }
 
-        // Get username from refresh token
-        String username = jwtTokenProvider.getUsernameFromToken(refreshToken);
+        // Get email from refresh token
+        String email = jwtTokenProvider.getEmailFromToken(refreshToken);
 
         // Get customer details to get roles and ID
         CustomerDto customer;
         try {
-            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByUsername(username);
+            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(email);
             customer = response.getBody();
         } catch (FeignException e) {
             logger.error("Error fetching customer for token refresh: {}", e.getMessage());
@@ -176,20 +175,20 @@ public class AuthService {
 
         // Generate new access token
         String newAccessToken = jwtTokenProvider.generateAccessToken(
-                username, 
+                email, 
                 roles, 
                 customer.getIdCustomer()
         );
 
         // Generate new refresh token
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(username);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(email);
 
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
                 .expiresIn(jwtTokenProvider.getJwtExpiration())
-                .username(username)
+                .email(email)
                 .roles(roles)
                 .build();
     }

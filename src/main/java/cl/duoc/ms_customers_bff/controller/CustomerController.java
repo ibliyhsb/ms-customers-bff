@@ -40,7 +40,7 @@ public class CustomerController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-            return customerService.getCurrentUserProfile(userDetails.getUsername());
+            return customerService.getCurrentUserProfile(userDetails.getEmail());
         }
         return ResponseEntity.status(401).body("User not authenticated");
     }
@@ -52,7 +52,7 @@ public class CustomerController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-            return customerService.updateCurrentUserProfile(userDetails.getUsername(), customerDto);
+            return customerService.updateCurrentUserProfile(userDetails.getEmail(), customerDto);
         }
         return ResponseEntity.status(401).body("User not authenticated");
     }
@@ -76,13 +76,13 @@ public class CustomerController {
      * @deprecated This endpoint is deprecated. Use /api/auth/login for JWT-based authentication.
      */
     @Deprecated
-    @GetMapping("/authenticate/{username}/{password}")
+    @PostMapping("/authenticate/{email}/{password}")
     @Operation(summary = "Authenticate customer (Deprecated)", description = "This endpoint is deprecated. Use /api/auth/login instead.")
-    public ResponseEntity<String> authenticateCustomer(@PathVariable("username") String username, @PathVariable("password") String password){
-        return customerService.authenticateCustomer(username, password);
+    public ResponseEntity<String> authenticateCustomer(@PathVariable("email") String email, @PathVariable("password") String password){
+        return customerService.authenticateCustomer(email, password);
     }
 
-    @PostMapping()
+    @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create customer", description = "Create a new customer (Admin only)")
     public ResponseEntity<String> insertCustomer(@RequestBody CustomerDto customerDto){

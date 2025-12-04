@@ -14,9 +14,9 @@ import lombok.Setter;
 @Setter
 public class LoginRequest {
 
-    @NotBlank(message = "Username is required")
-    @JsonProperty("username")
-    private String username;
+    @NotBlank(message = "Email is required")
+    @JsonProperty("email")
+    private String email;
 
     @NotBlank(message = "Password is required")
     @JsonProperty("password")
