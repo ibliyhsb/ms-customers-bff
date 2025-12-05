@@ -34,15 +34,16 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Login successful"),
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         try {
-            AuthResponse authResponse = authService.login(loginRequest);
+            AuthResponse authResponse = authService.login(request);
             return ResponseEntity.ok(authResponse);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
 
+   
     @PostMapping("/register")
     @Operation(summary = "Register", description = "Register a new user and return JWT tokens")
     @ApiResponses(value = {

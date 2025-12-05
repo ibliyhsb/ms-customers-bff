@@ -35,4 +35,13 @@ public class AuthResponse {
 
     @JsonProperty("roles")
     private Set<String> roles;
+    
+    @JsonProperty("name")
+    private String name;
+    
+    @JsonProperty("lastName")
+    private String lastName;
+    
+    @JsonProperty("userId")
+    private Long userId;
 }

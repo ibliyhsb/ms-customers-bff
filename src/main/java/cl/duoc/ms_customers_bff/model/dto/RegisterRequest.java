@@ -10,6 +10,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -22,15 +24,24 @@ public class RegisterRequest {
     private String password;
 
     @NotBlank(message = "Name is required")
-    @JsonProperty("name")
+    @JsonProperty("nombre")
     private String name;
 
     @NotBlank(message = "Last name is required")
-    @JsonProperty("lastName")
+    @JsonProperty("apellidos")
     private String lastName;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")
     @JsonProperty("email")
     private String email;
+
+    @JsonProperty("fechaNacimiento")
+    private LocalDate birthDate;
+
+    @JsonProperty("edad")
+    private Integer age;
+
+    @JsonProperty("codigoPromo")
+    private String promoCode;
 }

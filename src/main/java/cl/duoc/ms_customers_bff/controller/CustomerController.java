@@ -83,7 +83,7 @@ public class CustomerController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    //@PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create customer", description = "Create a new customer (Admin only)")
     public ResponseEntity<String> insertCustomer(@RequestBody CustomerDto customerDto){
         try{

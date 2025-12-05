@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -35,30 +36,65 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest loginRequest) {
-        // Authenticate against ms-customers-bs
-        boolean isAuthenticated = customersBsFeignClient.authenticateCustomer(
-                loginRequest.getEmail(), 
-                loginRequest.getPassword()
-        );
-
-        if (!isAuthenticated) {
+        logger.info("Login attempt for email: {}", loginRequest.getEmail());
+        
+        // Get customer details by email
+        CustomerDto customer = null;
+        try {
+            // Primero intentar con el endpoint directo (si existe)
+            try {
+                ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(loginRequest.getEmail());
+                customer = response.getBody();
+                logger.info("Customer found via direct endpoint: {}", customer != null ? customer.getEmail() : "null");
+            } catch (FeignException e) {
+                // Si falla, obtener todos y filtrar
+                logger.warn("Direct endpoint failed, fetching all customers and filtering");
+                ResponseEntity<List<CustomerDto>> allCustomersResponse = customersBsFeignClient.selectAllCustomer();
+                List<CustomerDto> allCustomers = allCustomersResponse.getBody();
+                if (allCustomers != null) {
+                    customer = allCustomers.stream()
+                        .filter(c -> c.getEmail().equalsIgnoreCase(loginRequest.getEmail()))
+                        .findFirst()
+                        .orElse(null);
+                }
+            }
+        } catch (FeignException e) {
+            logger.error("Error fetching customer: {}", e.getMessage());
             throw new IllegalArgumentException("Invalid email or password");
         }
 
-        // Get customer details including roles
-        CustomerDto customer;
-        try {
-            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(loginRequest.getEmail());
-            customer = response.getBody();
-        } catch (FeignException e) {
-            logger.error("Error fetching customer by email: {}", e.getMessage());
-            throw new IllegalArgumentException("Error fetching user details");
-        }
-
         if (customer == null) {
-            throw new IllegalArgumentException("Customer not found");
+            logger.warn("Customer not found for email: {}", loginRequest.getEmail());
+            throw new IllegalArgumentException("Invalid email or password");
         }
 
+        logger.debug("Stored password hash: {}", customer.getPassword());
+        logger.debug("Provided password: {}", loginRequest.getPassword());
+        
+        // Verify password
+        // Intentar primero con BCrypt (contraseñas nuevas)
+        boolean passwordMatches = false;
+        try {
+            passwordMatches = passwordEncoder.matches(loginRequest.getPassword(), customer.getPassword());
+            logger.info("BCrypt password match: {}", passwordMatches);
+        } catch (Exception e) {
+            // Si falla BCrypt, puede ser que la contraseña esté en texto plano (usuarios antiguos)
+            logger.warn("BCrypt failed, checking plain text password for legacy user: {}", e.getMessage());
+        }
+        
+        // Si BCrypt no funcionó, intentar comparación directa (usuarios legacy)
+        if (!passwordMatches) {
+            passwordMatches = loginRequest.getPassword().equals(customer.getPassword());
+            logger.info("Plain text password match: {}", passwordMatches);
+        }
+        
+        if (!passwordMatches) {
+            logger.warn("Password verification failed for email: {}", loginRequest.getEmail());
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        logger.info("Login successful for email: {}", loginRequest.getEmail());
+        
         // Get roles, default to USER if not set
         Set<String> roles = customer.getRoles();
         if (roles == null || roles.isEmpty()) {
@@ -74,6 +110,12 @@ public class AuthService {
         );
         String refreshToken = jwtTokenProvider.generateRefreshToken(customer.getEmail());
 
+        // Log para debugging
+        logger.info("Building AuthResponse - name: {}, lastName: {}, idCustomer: {}", 
+            customer.getName(), 
+            customer.getLastName(), 
+            customer.getIdCustomer());
+
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -81,6 +123,9 @@ public class AuthService {
                 .expiresIn(jwtTokenProvider.getJwtExpiration())
                 .email(customer.getEmail())
                 .roles(roles)
+                .name(customer.getName())
+                .lastName(customer.getLastName())
+                .userId(customer.getIdCustomer())
                 .build();
     }
 
@@ -91,6 +136,9 @@ public class AuthService {
         customerDto.setName(registerRequest.getName());
         customerDto.setLastName(registerRequest.getLastName());
         customerDto.setEmail(registerRequest.getEmail());
+        customerDto.setBirthDate(registerRequest.getBirthDate());
+        customerDto.setAge(registerRequest.getAge());
+        customerDto.setPromoCode(registerRequest.getPromoCode());
         
         // Set default role as USER
         Set<String> roles = new HashSet<>();
@@ -112,10 +160,24 @@ public class AuthService {
         }
 
         // Get the created customer to get the ID
-        CustomerDto createdCustomer;
+        CustomerDto createdCustomer = null;
         try {
-            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(registerRequest.getEmail());
-            createdCustomer = response.getBody();
+            // Primero intentar con el endpoint directo
+            try {
+                ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(registerRequest.getEmail());
+                createdCustomer = response.getBody();
+            } catch (FeignException e) {
+                // Si falla, obtener todos y filtrar
+                logger.warn("Direct endpoint failed, fetching all customers and filtering");
+                ResponseEntity<List<CustomerDto>> allCustomersResponse = customersBsFeignClient.selectAllCustomer();
+                List<CustomerDto> allCustomers = allCustomersResponse.getBody();
+                if (allCustomers != null) {
+                    createdCustomer = allCustomers.stream()
+                        .filter(c -> c.getEmail().equalsIgnoreCase(registerRequest.getEmail()))
+                        .findFirst()
+                        .orElse(null);
+                }
+            }
         } catch (FeignException e) {
             logger.error("Error fetching created customer: {}", e.getMessage());
             throw new IllegalArgumentException("User registered but failed to fetch details");
@@ -138,6 +200,9 @@ public class AuthService {
                 .expiresIn(jwtTokenProvider.getJwtExpiration())
                 .email(registerRequest.getEmail())
                 .roles(roles)
+                .name(createdCustomer != null ? createdCustomer.getName() : registerRequest.getName())
+                .lastName(createdCustomer != null ? createdCustomer.getLastName() : registerRequest.getLastName())
+                .userId(customerId)
                 .build();
     }
 
@@ -153,10 +218,24 @@ public class AuthService {
         String email = jwtTokenProvider.getEmailFromToken(refreshToken);
 
         // Get customer details to get roles and ID
-        CustomerDto customer;
+        CustomerDto customer = null;
         try {
-            ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(email);
-            customer = response.getBody();
+            // Primero intentar con el endpoint directo
+            try {
+                ResponseEntity<CustomerDto> response = customersBsFeignClient.getCustomerByEmail(email);
+                customer = response.getBody();
+            } catch (FeignException e) {
+                // Si falla, obtener todos y filtrar
+                logger.warn("Direct endpoint failed, fetching all customers and filtering");
+                ResponseEntity<List<CustomerDto>> allCustomersResponse = customersBsFeignClient.selectAllCustomer();
+                List<CustomerDto> allCustomers = allCustomersResponse.getBody();
+                if (allCustomers != null) {
+                    customer = allCustomers.stream()
+                        .filter(c -> c.getEmail().equalsIgnoreCase(email))
+                        .findFirst()
+                        .orElse(null);
+                }
+            }
         } catch (FeignException e) {
             logger.error("Error fetching customer for token refresh: {}", e.getMessage());
             throw new IllegalArgumentException("Error refreshing token");
@@ -190,6 +269,9 @@ public class AuthService {
                 .expiresIn(jwtTokenProvider.getJwtExpiration())
                 .email(email)
                 .roles(roles)
+                .name(customer.getName())
+                .lastName(customer.getLastName())
+                .userId(customer.getIdCustomer())
                 .build();
     }
 }
