@@ -31,11 +31,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        // No aplicar el filtro JWT a rutas públicas
-        return path.startsWith("/api/auth/") ||
-                path.startsWith("/api/customers/GetCustomerById/"); // ← AGREGAR ESTA LÍNEA
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+        
+        logger.debug("JwtAuthenticationFilter - checking path: {} method: {}", path, method);
+        
+        // No aplicar filtro JWT en rutas públicas
+        boolean shouldSkip = path.startsWith("/api/auth/") ||                           // Todos los endpoints de autenticación
+               (path.equals("/api/customers") && method.equals("POST")) || // Registro legacy
+               path.startsWith("/api/customers/authenticate") ||           // Login legacy
+               path.startsWith("/swagger-ui") ||                          // Swagger UI
+               path.startsWith("/v3/api-docs") ||                         // OpenAPI docs
+               path.equals("/swagger-ui.html");                           // Swagger HTML
+        
+        logger.debug("JwtAuthenticationFilter - shouldNotFilter: {}", shouldSkip);
+        return shouldSkip;
     }
 
     @Override
